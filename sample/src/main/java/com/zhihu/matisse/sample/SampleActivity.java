@@ -21,6 +21,7 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -39,8 +40,11 @@ import com.zhihu.matisse.engine.impl.GlideEngine;
 import com.zhihu.matisse.engine.impl.PicassoEngine;
 import com.zhihu.matisse.filter.Filter;
 import com.zhihu.matisse.internal.entity.CaptureStrategy;
+import com.zhihu.matisse.ucrop.CropOption;
 
+import java.io.File;
 import java.util.List;
+import java.util.Locale;
 
 public class SampleActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -78,16 +82,37 @@ public class SampleActivity extends AppCompatActivity implements View.OnClickLis
     }
     // </editor-fold>
 
+    public static boolean createFile(String path)  {
+        if (TextUtils.isEmpty(path)) {
+            return false;
+        }
+        final File file = new File(path);
+        return file.exists() || file.mkdirs();
+
+    }
+
     private void startAction(View v) {
         switch (v.getId()) {
             case R.id.zhihu:
+
+                String cacheDir = this.getCacheDir().getAbsolutePath() + "/boxing";
+                createFile(cacheDir);
+                Uri destUri = new Uri.Builder()
+                        .scheme("file")
+                        .appendPath(cacheDir)
+                        .appendPath(String.format(Locale.US, "%s.png", System.currentTimeMillis()))
+                        .build();
+                CropOption cropOption =new CropOption(destUri);
+                cropOption.aspectRatio(1,1);
+                cropOption.hideBottomControls(true);
                 Matisse.from(SampleActivity.this)
                         .choose(MimeType.ofImage(), false)
-                        .countable(true)
+                        .countable(false)
+                        .theme(R.style.Matisse_Dracula)
                         .capture(true)
                         .captureStrategy(
                                 new CaptureStrategy(true, "com.zhihu.matisse.sample.fileprovider", "test"))
-                        .maxSelectable(9)
+                        .maxSelectable(1)
                         .addFilter(new GifSizeFilter(320, 320, 5 * Filter.K * Filter.K))
                         .gridExpectedSize(
                                 getResources().getDimensionPixelSize(R.dimen.grid_expected_size))
@@ -104,6 +129,7 @@ public class SampleActivity extends AppCompatActivity implements View.OnClickLis
                         .setOnCheckedListener(isChecked -> {
                             Log.e("isChecked", "onCheck: isChecked=" + isChecked);
                         })
+                        .withCrop(cropOption)
                         .forResult(REQUEST_CODE_CHOOSE);
                 break;
             case R.id.dracula:

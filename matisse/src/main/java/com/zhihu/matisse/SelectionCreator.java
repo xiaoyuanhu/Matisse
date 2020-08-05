@@ -32,6 +32,7 @@ import com.zhihu.matisse.internal.entity.CaptureStrategy;
 import com.zhihu.matisse.internal.entity.SelectionSpec;
 import com.zhihu.matisse.listener.OnCheckedListener;
 import com.zhihu.matisse.listener.OnSelectedListener;
+import com.zhihu.matisse.ucrop.CropOption;
 import com.zhihu.matisse.ui.MatisseActivity;
 
 import java.lang.annotation.Retention;
@@ -366,6 +367,11 @@ public final class SelectionCreator {
 
     public SelectionCreator showPreview(boolean showPreview) {
         mSelectionSpec.showPreview = showPreview;
+        return this;
+    }
+
+    public SelectionCreator withCrop(CropOption cropOption) {
+        mSelectionSpec.cropOption = cropOption;
         return this;
     }
 }

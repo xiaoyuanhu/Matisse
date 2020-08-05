@@ -22,22 +22,20 @@ import android.database.Cursor;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import androidx.appcompat.app.ActionBar;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-
-import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.fragment.app.Fragment;
 
 import com.zhihu.matisse.R;
 import com.zhihu.matisse.internal.entity.Album;
@@ -57,8 +55,8 @@ import com.zhihu.matisse.internal.ui.widget.IncapableDialog;
 import com.zhihu.matisse.internal.utils.MediaStoreCompat;
 import com.zhihu.matisse.internal.utils.PathUtils;
 import com.zhihu.matisse.internal.utils.PhotoMetadataUtils;
+import com.zhihu.matisse.ucrop.MatisseCrop;
 
-import com.zhihu.matisse.internal.utils.SingleMediaScanner;
 import java.util.ArrayList;
 
 /**
@@ -76,6 +74,7 @@ public class MatisseActivity extends AppCompatActivity implements
     public static final String EXTRA_RESULT_ORIGINAL_ENABLE = "extra_result_original_enable";
     private static final int REQUEST_CODE_PREVIEW = 23;
     private static final int REQUEST_CODE_CAPTURE = 24;
+    private static final int REQUEST_CODE_CROP = 25;
     public static final String CHECK_STATE = "checkState";
     private final AlbumCollection mAlbumCollection = new AlbumCollection();
     private MediaStoreCompat mMediaStoreCompat;
@@ -225,25 +224,35 @@ public class MatisseActivity extends AppCompatActivity implements
         } else if (requestCode == REQUEST_CODE_CAPTURE) {
             // Just pass the data back to previous calling Activity.
             Uri contentUri = mMediaStoreCompat.getCurrentPhotoUri();
-            String path = mMediaStoreCompat.getCurrentPhotoPath();
-            ArrayList<Uri> selected = new ArrayList<>();
-            selected.add(contentUri);
-            ArrayList<String> selectedPath = new ArrayList<>();
-            selectedPath.add(path);
-            Intent result = new Intent();
-            result.putParcelableArrayListExtra(EXTRA_RESULT_SELECTION, selected);
-            result.putStringArrayListExtra(EXTRA_RESULT_SELECTION_PATH, selectedPath);
-            setResult(RESULT_OK, result);
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP)
-                MatisseActivity.this.revokeUriPermission(contentUri,
-                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-            new SingleMediaScanner(this.getApplicationContext(), path, new SingleMediaScanner.ScanListener() {
-                @Override public void onScanFinish() {
-                    Log.i("SingleMediaScanner", "scan finish!");
-                }
-            });
-            finish();
+//            String path = mMediaStoreCompat.getCurrentPhotoPath();
+//            ArrayList<Uri> selected = new ArrayList<>();
+//            selected.add(contentUri);
+//            ArrayList<String> selectedPath = new ArrayList<>();
+//            selectedPath.add(path);
+//            Intent result = new Intent();
+//            result.putParcelableArrayListExtra(EXTRA_RESULT_SELECTION, selected);
+//            result.putStringArrayListExtra(EXTRA_RESULT_SELECTION_PATH, selectedPath);
+//            setResult(RESULT_OK, result);
+//            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP)
+//                MatisseActivity.this.revokeUriPermission(contentUri,
+//                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+//
+//            new SingleMediaScanner(this.getApplicationContext(), path, new SingleMediaScanner.ScanListener() {
+//                @Override public void onScanFinish() {
+//                    Log.i("SingleMediaScanner", "scan finish!");
+//                }
+//            });
+//            finish();
+            if (mSpec.isWithCrop()){
+                MatisseCrop.getInstance().onStartCrop(this,  mSpec.cropOption, contentUri, REQUEST_CODE_CROP);
+            }else {
+                onSingleMediaSelected(contentUri);
+            }
+        }else if (requestCode == REQUEST_CODE_CROP){
+            Uri output = MatisseCrop.getInstance().onCropFinish(resultCode, data);
+            if (output != null) {
+                onSingleMediaSelected(output);
+            }
         }
     }
 
@@ -263,7 +272,6 @@ public class MatisseActivity extends AppCompatActivity implements
             mButtonApply.setEnabled(true);
             mButtonApply.setText(getString(R.string.button_apply, selectedCount));
         }
-
 
         if (mSpec.originalable) {
             mOriginalLayout.setVisibility(View.VISIBLE);
@@ -412,14 +420,38 @@ public class MatisseActivity extends AppCompatActivity implements
         }
     }
 
+    private void onSingleMediaSelected(Uri uri){
+        Intent result = new Intent();
+        ArrayList<Uri> selectedUris = new ArrayList<>();
+        selectedUris.add(uri);
+        result.putParcelableArrayListExtra(EXTRA_RESULT_SELECTION, selectedUris);
+        ArrayList<String> selectedPaths = new ArrayList<>();
+        selectedPaths.add(PathUtils.getPath(this, uri));
+        result.putStringArrayListExtra(EXTRA_RESULT_SELECTION_PATH, selectedPaths);
+        result.putExtra(EXTRA_RESULT_ORIGINAL_ENABLE, mOriginalEnable);
+        setResult(RESULT_OK, result);
+        finish();
+    }
+
     @Override
     public void onMediaClick(Album album, Item item, int adapterPosition) {
-        Intent intent = new Intent(this, AlbumPreviewActivity.class);
-        intent.putExtra(AlbumPreviewActivity.EXTRA_ALBUM, album);
-        intent.putExtra(AlbumPreviewActivity.EXTRA_ITEM, item);
-        intent.putExtra(BasePreviewActivity.EXTRA_DEFAULT_BUNDLE, mSelectedCollection.getDataWithBundle());
-        intent.putExtra(BasePreviewActivity.EXTRA_RESULT_ORIGINAL_ENABLE, mOriginalEnable);
-        startActivityForResult(intent, REQUEST_CODE_PREVIEW);
+
+        if (mSpec.singleSelectionModeEnabled()){
+            if (mSpec.isWithCrop()){
+                MatisseCrop.getInstance().onStartCrop(this,  mSpec.cropOption, item.uri, REQUEST_CODE_CROP);
+            }else {
+                onSingleMediaSelected(item.getContentUri());
+            }
+        }else {
+            Intent intent = new Intent(this, AlbumPreviewActivity.class);
+            intent.putExtra(AlbumPreviewActivity.EXTRA_ALBUM, album);
+            intent.putExtra(AlbumPreviewActivity.EXTRA_ITEM, item);
+            intent.putExtra(BasePreviewActivity.EXTRA_DEFAULT_BUNDLE, mSelectedCollection.getDataWithBundle());
+            intent.putExtra(BasePreviewActivity.EXTRA_RESULT_ORIGINAL_ENABLE, mOriginalEnable);
+            startActivityForResult(intent, REQUEST_CODE_PREVIEW);
+        }
+
+
     }
 
     @Override

@@ -16,6 +16,8 @@
 package com.zhihu.matisse.internal.utils;
 
 import android.app.Activity;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -24,9 +26,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
-import androidx.fragment.app.Fragment;
+
 import androidx.core.content.FileProvider;
 import androidx.core.os.EnvironmentCompat;
+import androidx.fragment.app.Fragment;
 
 import com.zhihu.matisse.internal.entity.CaptureStrategy;
 
@@ -42,9 +45,9 @@ public class MediaStoreCompat {
 
     private final WeakReference<Activity> mContext;
     private final WeakReference<Fragment> mFragment;
-    private       CaptureStrategy         mCaptureStrategy;
-    private       Uri                     mCurrentPhotoUri;
-    private       String                  mCurrentPhotoPath;
+    private CaptureStrategy mCaptureStrategy;
+    private Uri mCurrentPhotoUri;
+    private String mCurrentPhotoPath;
 
     public MediaStoreCompat(Activity activity) {
         mContext = new WeakReference<>(activity);
@@ -74,6 +77,7 @@ public class MediaStoreCompat {
     public void dispatchCaptureIntent(Context context, int requestCode) {
         Intent captureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         if (captureIntent.resolveActivity(context.getPackageManager()) != null) {
+
             File photoFile = null;
             try {
                 photoFile = createImageFile();
@@ -83,8 +87,17 @@ public class MediaStoreCompat {
 
             if (photoFile != null) {
                 mCurrentPhotoPath = photoFile.getAbsolutePath();
-                mCurrentPhotoUri = FileProvider.getUriForFile(mContext.get(),
-                        mCaptureStrategy.authority, photoFile);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentResolver resolver = context.getContentResolver();
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Downloads.RELATIVE_PATH,Environment.DIRECTORY_DCIM);
+                    values.put(MediaStore.MediaColumns.DISPLAY_NAME, photoFile.getName());
+                    values.put(MediaStore.MediaColumns.MIME_TYPE, "image/*");
+                    mCurrentPhotoUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                }else {
+                    mCurrentPhotoUri = FileProvider.getUriForFile(mContext.get(),
+                            mCaptureStrategy.authority, photoFile);
+                }
                 captureIntent.putExtra(MediaStore.EXTRA_OUTPUT, mCurrentPhotoUri);
                 captureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {

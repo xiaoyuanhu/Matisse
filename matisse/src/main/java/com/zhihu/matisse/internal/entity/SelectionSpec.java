@@ -27,6 +27,7 @@ import com.zhihu.matisse.engine.impl.GlideEngine;
 import com.zhihu.matisse.filter.Filter;
 import com.zhihu.matisse.listener.OnCheckedListener;
 import com.zhihu.matisse.listener.OnSelectedListener;
+import com.zhihu.matisse.ucrop.CropOption;
 
 import java.util.List;
 import java.util.Set;
@@ -57,6 +58,7 @@ public final class SelectionSpec {
     public int originalMaxSize;
     public OnCheckedListener onCheckedListener;
     public boolean showPreview;
+    public CropOption cropOption;
 
     private SelectionSpec() {
     }
@@ -93,6 +95,11 @@ public final class SelectionSpec {
         autoHideToobar = false;
         originalMaxSize = Integer.MAX_VALUE;
         showPreview = true;
+        cropOption = null;
+    }
+
+    public boolean isWithCrop(){
+        return cropOption!=null;
     }
 
     public boolean singleSelectionModeEnabled() {

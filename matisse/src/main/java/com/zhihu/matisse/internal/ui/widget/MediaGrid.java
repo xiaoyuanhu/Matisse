@@ -17,13 +17,14 @@ package com.zhihu.matisse.internal.ui.widget;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
-import androidx.recyclerview.widget.RecyclerView;
 import android.text.format.DateUtils;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.zhihu.matisse.R;
 import com.zhihu.matisse.internal.entity.Item;
@@ -94,6 +95,11 @@ public class MediaGrid extends SquareFrameLayout implements View.OnClickListener
     }
 
     private void initCheckView() {
+        if (mPreBindInfo.singleSelectionModeEnabled){
+            mCheckView.setVisibility(View.GONE);
+        }else{
+            mCheckView.setVisibility(View.VISIBLE);
+        }
         mCheckView.setCountable(mPreBindInfo.mCheckViewCountable);
     }
 
@@ -110,6 +116,7 @@ public class MediaGrid extends SquareFrameLayout implements View.OnClickListener
     }
 
     private void setImage() {
+//        Log.d(this.getClass().getSimpleName(), "setImage() called:"+mMedia.getContentUri());
         if (mMedia.isGif()) {
             SelectionSpec.getInstance().imageEngine.loadGifThumbnail(getContext(), mPreBindInfo.mResize,
                     mPreBindInfo.mPlaceholder, mThumbnail, mMedia.getContentUri());
@@ -147,13 +154,15 @@ public class MediaGrid extends SquareFrameLayout implements View.OnClickListener
         int mResize;
         Drawable mPlaceholder;
         boolean mCheckViewCountable;
+        boolean singleSelectionModeEnabled;
         RecyclerView.ViewHolder mViewHolder;
 
-        public PreBindInfo(int resize, Drawable placeholder, boolean checkViewCountable,
+        public PreBindInfo(int resize, Drawable placeholder, SelectionSpec selectionSpec,
                            RecyclerView.ViewHolder viewHolder) {
             mResize = resize;
             mPlaceholder = placeholder;
-            mCheckViewCountable = checkViewCountable;
+            mCheckViewCountable = selectionSpec.countable;
+            singleSelectionModeEnabled = selectionSpec.singleSelectionModeEnabled();
             mViewHolder = viewHolder;
         }
     }
